@@ -1,0 +1,157 @@
+<Window x:Class="SoundCloudDesktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SoundCloud Desktop" Width="1160" Height="760" MinWidth="900" MinHeight="600"
+        Background="{StaticResource BackgroundBrush}" Foreground="{StaticResource TextBrush}"
+        WindowStartupLocation="CenterScreen" Closing="Window_Closing">
+  <Window.Resources>
+    <Style x:Key="SidebarButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="Margin" Value="0,2" />
+      <Setter Property="Padding" Value="14,11" />
+      <Setter Property="FontSize" Value="14" />
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#262932" /></Trigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Width" Value="38" /><Setter Property="Height" Value="34" /><Setter Property="Padding" Value="0" />
+      <Setter Property="FontSize" Value="16" />
+      <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#292C35" /></Trigger></Style.Triggers>
+    </Style>
+    <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Background" Value="{StaticResource OrangeBrush}" /><Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Padding" Value="18,10" /><Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#FF6A22" /></Trigger></Style.Triggers>
+    </Style>
+  </Window.Resources>
+
+  <Grid>
+    <Grid x:Name="LoginView" Visibility="Visible">
+      <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Width="420">
+        <Border Background="{StaticResource PanelBrush}" CornerRadius="12" Padding="34">
+          <StackPanel>
+            <TextBlock Text="soundcloud" FontSize="30" FontWeight="Bold" Foreground="{StaticResource OrangeBrush}" />
+            <TextBlock Text="Desktop player" FontSize="14" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,30" />
+            <TextBlock Text="OAuth access token" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,7" />
+            <PasswordBox x:Name="TokenBox" Height="42" Padding="11,9" FontSize="14" Background="#20232B" Foreground="White" BorderBrush="#343844" BorderThickness="1" />
+            <TextBlock Text="Paste the oauth_token from your logged-in SoundCloud web session. It stays on this device and is only sent to SoundCloud." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,9,0,18" />
+            <Button x:Name="LoginButton" Content="Log in" Style="{StaticResource AccentButton}" Click="Login_Click" Height="42" />
+            <TextBlock x:Name="LoginStatus" Foreground="#F07A63" TextWrapping="Wrap" Margin="0,15,0,0" FontSize="12" />
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <Grid x:Name="AppView" Visibility="Collapsed">
+      <Grid.RowDefinitions><RowDefinition Height="58" /><RowDefinition Height="*" /><RowDefinition Height="94" /></Grid.RowDefinitions>
+      <Border Grid.Row="0" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Background="#0F1015">
+        <Grid Margin="22,0">
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="soundcloud" Foreground="{StaticResource OrangeBrush}" FontSize="20" FontWeight="Bold" />
+            <TextBlock Text=" / Liked tracks" Foreground="{StaticResource MutedBrush}" FontSize="15" VerticalAlignment="Center" Margin="10,3,0,0" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock x:Name="ProfileName" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
+            <Button Content="Log out" Click="Logout_Click" Foreground="{StaticResource MutedBrush}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <Grid Grid.Row="1">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="210" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+        <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,1,0" Padding="12,22">
+          <StackPanel>
+            <Button Content="♫   Liked tracks" Style="{StaticResource SidebarButton}" Foreground="White" Background="#252831" />
+            <Button Content="↻   Refresh" Style="{StaticResource SidebarButton}" Click="Refresh_Click" />
+            <Separator Margin="10,18" Background="{StaticResource LineBrush}" />
+            <TextBlock Text="YOUR LIBRARY" Foreground="{StaticResource MutedBrush}" FontSize="10" FontWeight="Bold" Margin="14,0,0,9" />
+            <TextBlock Text="All liked songs are loaded automatically, including additional pages." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="14,0,12,0" />
+          </StackPanel>
+        </Border>
+
+        <Grid Grid.Column="1" Margin="30,25,30,16">
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+          <DockPanel Grid.Row="0">
+            <TextBlock Text="Liked tracks" FontSize="28" FontWeight="SemiBold" />
+            <TextBlock x:Name="TrackCount" Text="" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Bottom" Margin="12,0,0,4" />
+            <Button x:Name="PlayAllButton" Content="▶  Play all" Style="{StaticResource AccentButton}" DockPanel.Dock="Right" Click="PlayAll_Click" />
+          </DockPanel>
+          <TextBlock x:Name="PageStatus" Grid.Row="1" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,7,0,16" />
+          <ListView x:Name="TrackList" Grid.Row="2" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" SelectionChanged="TrackList_SelectionChanged" MouseDoubleClick="TrackList_MouseDoubleClick">
+            <ListView.Resources>
+              <Style TargetType="ListViewItem">
+                <Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="0,0,0,5" /><Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Background" Value="Transparent" />
+                <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#1D2028" /></Trigger><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#272B34" /></Trigger></Style.Triggers>
+              </Style>
+            </ListView.Resources>
+            <ListView.ItemTemplate>
+              <DataTemplate>
+                <Grid Height="66" Margin="6,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="54" /><ColumnDefinition Width="*" /><ColumnDefinition Width="100" /><ColumnDefinition Width="54" /></Grid.ColumnDefinitions>
+                  <Grid Grid.Column="0" Width="48" Height="48" VerticalAlignment="Center">
+                    <Border Background="#272A32" CornerRadius="4" />
+                    <TextBlock Text="♫" Foreground="{StaticResource OrangeBrush}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Image Source="{Binding ArtworkUrl}" Stretch="UniformToFill" />
+                  </Grid>
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,8,0">
+                    <TextBlock Text="{Binding Title}" FontSize="14" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Artist}" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <TextBlock Grid.Column="2" Text="{Binding DurationText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,16,0" />
+                  <Button Grid.Column="3" Content="▶" Style="{StaticResource IconButton}" Tag="{Binding}" Click="TrackPlay_Click" VerticalAlignment="Center" />
+                </Grid>
+              </DataTemplate>
+            </ListView.ItemTemplate>
+          </ListView>
+          <StackPanel x:Name="EmptyState" Grid.Row="2" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock Text="♫" FontSize="38" Foreground="{StaticResource OrangeBrush}" HorizontalAlignment="Center" />
+            <TextBlock Text="No liked tracks found" FontSize="18" HorizontalAlignment="Center" Margin="0,8,0,0" />
+            <TextBlock Text="Like a track on SoundCloud, then refresh this page." Foreground="{StaticResource MutedBrush}" Margin="0,5,0,0" />
+          </StackPanel>
+        </Grid>
+      </Grid>
+      <Border Grid.Row="2" Background="#171920" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0" Padding="20,11">
+        <Grid>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="260" /><ColumnDefinition Width="*" /><ColumnDefinition Width="250" /></Grid.ColumnDefinitions>
+          <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+            <Grid Width="54" Height="54">
+              <Border Background="#272A32" CornerRadius="4" /><TextBlock Text="♫" Foreground="{StaticResource OrangeBrush}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" /><Image x:Name="NowPlayingArtwork" Stretch="UniformToFill" />
+            </Grid>
+            <StackPanel Margin="12,0,0,0" VerticalAlignment="Center" Width="185">
+              <TextBlock x:Name="NowPlayingTitle" Text="Nothing playing" FontSize="13" TextTrimming="CharacterEllipsis" />
+              <TextBlock x:Name="NowPlayingArtist" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </StackPanel>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Width="390">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+              <Button x:Name="ShuffleButton" Content="⤨" ToolTip="Shuffle" Style="{StaticResource IconButton}" Click="Shuffle_Click" Foreground="{StaticResource MutedBrush}" />
+              <Button Content="◀" ToolTip="Previous" Style="{StaticResource IconButton}" Click="Previous_Click" />
+              <Button x:Name="PlayPauseButton" Content="▶" FontSize="20" Style="{StaticResource IconButton}" Click="PlayPause_Click" />
+              <Button Content="▶" ToolTip="Next" Style="{StaticResource IconButton}" Click="Next_Click" />
+              <Button x:Name="RepeatButton" Content="↻" ToolTip="Repeat" Style="{StaticResource IconButton}" Click="Repeat_Click" Foreground="{StaticResource MutedBrush}" />
+            </StackPanel>
+            <Grid Margin="0,5,0,0">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="42" /><ColumnDefinition Width="*" /><ColumnDefinition Width="42" /></Grid.ColumnDefinitions>
+              <TextBlock x:Name="ElapsedText" Text="0:00" Foreground="{StaticResource MutedBrush}" FontSize="10" VerticalAlignment="Center" />
+              <Slider x:Name="ProgressSlider" Grid.Column="1" Minimum="0" Maximum="1" Value="0" VerticalAlignment="Center" IsMoveToPointEnabled="True" PreviewMouseLeftButtonUp="ProgressSlider_MouseLeftButtonUp" />
+              <TextBlock x:Name="TotalText" Grid.Column="2" Text="0:00" Foreground="{StaticResource MutedBrush}" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
+          </StackPanel>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Text="🔊" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,7,0" />
+            <Slider x:Name="VolumeSlider" Width="125" Minimum="0" Maximum="1" Value="0.75" VerticalAlignment="Center" ValueChanged="VolumeSlider_ValueChanged" PreviewMouseWheel="VolumeSlider_PreviewMouseWheel" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Border x:Name="BusyOverlay" Visibility="Collapsed" Background="#C90B0C10">
+      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+        <TextBlock x:Name="BusyText" Text="Loading…" FontSize="16" HorizontalAlignment="Center" />
+        <ProgressBar IsIndeterminate="True" Width="220" Height="4" Margin="0,13,0,0" Foreground="{StaticResource OrangeBrush}" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

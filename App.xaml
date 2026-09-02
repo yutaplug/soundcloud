@@ -1,0 +1,26 @@
+<Application x:Class="SoundCloudDesktop.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+  <Application.Resources>
+    <SolidColorBrush x:Key="BackgroundBrush" Color="#0B0C10" />
+    <SolidColorBrush x:Key="PanelBrush" Color="#13151C" />
+    <SolidColorBrush x:Key="PanelLightBrush" Color="#1A1D25" />
+    <SolidColorBrush x:Key="TextBrush" Color="#F4F5F7" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#9297A4" />
+    <SolidColorBrush x:Key="OrangeBrush" Color="#FF5500" />
+    <SolidColorBrush x:Key="LineBrush" Color="#292C35" />
+    <Style TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="FontFamily" Value="Segoe UI" />
+    </Style>
+    <Style TargetType="Button">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="10,7" />
+      <Setter Property="FontFamily" Value="Segoe UI" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+  </Application.Resources>
+</Application>
