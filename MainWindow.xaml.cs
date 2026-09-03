@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -18,6 +19,7 @@ public partial class MainWindow : Window
     private readonly SoundCloudApi _api = new();
     private readonly TokenStore _tokenStore = new();
     private readonly ObservableCollection<Track> _tracks = new();
+    private readonly ICollectionView _trackView;
     private readonly MediaPlayer _player = new();
     private readonly DispatcherTimer _positionTimer;
     private readonly Random _random = new();
@@ -35,7 +37,9 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        TrackList.ItemsSource = _tracks;
+        _trackView = CollectionViewSource.GetDefaultView(_tracks);
+        _trackView.Filter = TrackMatchesSearch;
+        TrackList.ItemsSource = _trackView;
         _player.Volume = VolumeSlider.Value;
         _player.MediaOpened += Player_MediaOpened;
         _player.MediaEnded += Player_MediaEnded;
@@ -103,9 +107,7 @@ public partial class MainWindow : Window
             foreach (var track in loaded)
                 if ((track.Id <= 0 || unique.Add(track.Id)) && track.Title.Length > 0) _tracks.Add(track);
 
-            TrackCount.Text = _tracks.Count == 1 ? "1 track" : $"{_tracks.Count:N0} tracks";
-            PageStatus.Text = _tracks.Count == 0 ? "" : "Double-click a track to play it.";
-            EmptyState.Visibility = _tracks.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            UpdateTrackSummary();
         }
         catch (Exception ex)
         {
@@ -119,6 +121,12 @@ public partial class MainWindow : Window
     }
 
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await LoadTracksAsync();
+
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        _trackView.Refresh();
+        UpdateTrackSummary();
+    }
 
     private void Logout_Click(object sender, RoutedEventArgs e)
     {
@@ -150,7 +158,7 @@ public partial class MainWindow : Window
 
     private async void PlayAll_Click(object sender, RoutedEventArgs e)
     {
-        if (_tracks.Count > 0) await PlayTrackAsync(_tracks[0]);
+        if (_trackView.Cast<Track>().FirstOrDefault() is Track track) await PlayTrackAsync(track);
     }
 
     private async Task PlayTrackAsync(Track track)
@@ -346,6 +354,27 @@ public partial class MainWindow : Window
     };
 
     private static string FormatTime(TimeSpan time) => time.TotalHours >= 1 ? time.ToString(@"h\:mm\:ss") : time.ToString(@"m\:ss");
+
+    private bool TrackMatchesSearch(object item)
+    {
+        if (item is not Track track) return false;
+        var query = SearchBox?.Text.Trim() ?? "";
+        return string.IsNullOrWhiteSpace(query) ||
+               track.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+               track.Artist.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void UpdateTrackSummary()
+    {
+        var visibleCount = _trackView.Cast<Track>().Count();
+        TrackCount.Text = string.IsNullOrWhiteSpace(SearchBox?.Text)
+            ? (_tracks.Count == 1 ? "1 track" : $"{_tracks.Count:N0} tracks")
+            : $"{visibleCount:N0} match{(visibleCount == 1 ? "" : "es")}";
+        PageStatus.Text = _tracks.Count == 0
+            ? ""
+            : string.IsNullOrWhiteSpace(SearchBox?.Text) ? "Double-click a track to play it." : "Showing liked tracks matching your search.";
+        EmptyState.Visibility = visibleCount == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     private void SetToggleVisual(Button button, bool enabled)
     {

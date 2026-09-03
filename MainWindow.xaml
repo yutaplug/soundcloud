@@ -75,6 +75,7 @@
           <DockPanel Grid.Row="0">
             <TextBlock Text="Liked tracks" FontSize="28" FontWeight="SemiBold" />
             <TextBlock x:Name="TrackCount" Text="" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Bottom" Margin="12,0,0,4" />
+            <TextBox x:Name="SearchBox" Width="230" Height="34" DockPanel.Dock="Right" Margin="10,0,0,0" Padding="10,7" Background="#20232B" Foreground="{StaticResource TextBrush}" BorderBrush="#343844" BorderThickness="1" ToolTip="Search your liked tracks" TextChanged="SearchBox_TextChanged" />
             <Button x:Name="PlayAllButton" Content="▶  Play all" Style="{StaticResource AccentButton}" DockPanel.Dock="Right" Click="PlayAll_Click" />
           </DockPanel>
           <TextBlock x:Name="PageStatus" Grid.Row="1" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,7,0,16" />
