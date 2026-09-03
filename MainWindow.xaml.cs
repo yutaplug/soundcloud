@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _positionTimer;
     private readonly Random _random = new();
     private readonly List<int> _shuffleOrder = new();
+    private readonly HashSet<long> _failedTrackIds = new();
     private Track? _currentTrack;
     private int _currentIndex = -1;
     private bool _isLoading;
@@ -188,6 +189,7 @@ public partial class MainWindow : Window
         _showPlaylists = false;
         _showPlaylistTracks = false;
         _currentPlaylist = null;
+        _failedTrackIds.Clear();
         SectionTitle.Text = " / Liked tracks";
         PageTitle.Text = "Liked tracks";
         TrackList.ItemsSource = _trackView;
@@ -205,6 +207,7 @@ public partial class MainWindow : Window
         _showPlaylists = true;
         _showPlaylistTracks = false;
         _currentPlaylist = null;
+        _failedTrackIds.Clear();
         SectionTitle.Text = " / Liked playlists";
         PageTitle.Text = "Liked playlists";
         TracksContent.Visibility = Visibility.Collapsed;
@@ -228,6 +231,7 @@ public partial class MainWindow : Window
             _currentPlaylist = playlist;
             _showPlaylists = false;
             _showPlaylistTracks = true;
+            _failedTrackIds.Clear();
             SectionTitle.Text = $" / {playlist.Title}";
             PageTitle.Text = playlist.Title;
             TrackList.ItemsSource = _playlistTrackView;
@@ -257,6 +261,7 @@ public partial class MainWindow : Window
         _tracks.Clear();
         _playlists.Clear();
         _playlistTracks.Clear();
+        _failedTrackIds.Clear();
         _tokenStore.Delete();
         _currentTrack = null;
         _currentIndex = -1;
@@ -286,8 +291,9 @@ public partial class MainWindow : Window
         if (track is not null) await PlayTrackAsync(track);
     }
 
-    private async Task PlayTrackAsync(Track track)
+    private async Task PlayTrackAsync(Track track, bool automatic = false)
     {
+        if (!automatic) _failedTrackIds.Clear();
         var queue = CurrentQueue;
         var index = queue.IndexOf(track);
         if (index >= 0)
@@ -322,8 +328,15 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            _failedTrackIds.Add(track.Id);
             PlayPauseButton.Content = "▶";
-            PageStatus.Text = FriendlyError(ex);
+            if (IsSkippablePlaybackFailure(ex))
+            {
+                PageStatus.Text = $"Skipping unavailable or DRM-protected track: {track.Title}";
+                if (await TrySkipUnavailableTrackAsync()) return;
+                PageStatus.Text = "No other playable tracks were found.";
+            }
+            else PageStatus.Text = FriendlyError(ex);
         }
         finally
         {
@@ -360,11 +373,25 @@ public partial class MainWindow : Window
 
     private async void Next_Click(object sender, RoutedEventArgs e) => await PlayNextAsync();
 
-    private async Task PlayNextAsync()
+    private async Task PlayNextAsync(bool automatic = false)
     {
         if (CurrentQueue.Count == 0) return;
         var index = _shuffle ? GetNextShuffleIndex() : (_currentIndex + 1) % CurrentQueue.Count;
-        await PlayTrackAsync(CurrentQueue[index]);
+        await PlayTrackAsync(CurrentQueue[index], automatic);
+    }
+
+    private async Task<bool> TrySkipUnavailableTrackAsync()
+    {
+        if (CurrentQueue.Count <= 1) return false;
+        for (var attempt = 0; attempt < CurrentQueue.Count; attempt++)
+        {
+            var index = _shuffle ? GetNextShuffleIndex() : (_currentIndex + 1) % CurrentQueue.Count;
+            var candidate = CurrentQueue[index];
+            if (candidate.Id > 0 && _failedTrackIds.Contains(candidate.Id)) continue;
+            await PlayTrackAsync(candidate, automatic: true);
+            return true;
+        }
+        return false;
     }
 
     private void Shuffle_Click(object sender, RoutedEventArgs e)
@@ -413,6 +440,7 @@ public partial class MainWindow : Window
                 _player.Play();
                 PlayPauseButton.Content = "Ⅱ";
             }
+            if (_currentTrack is not null) _failedTrackIds.Remove(_currentTrack.Id);
             if (_player.NaturalDuration.HasTimeSpan)
             {
                 var total = _player.NaturalDuration.TimeSpan;
@@ -433,19 +461,25 @@ public partial class MainWindow : Window
 
         await Dispatcher.InvokeAsync(async () =>
         {
-            await PlayNextAsync();
+            await PlayNextAsync(automatic: true);
         });
     }
 
-    private void Player_MediaFailed(object? sender, ExceptionEventArgs e)
+    private async void Player_MediaFailed(object? sender, ExceptionEventArgs e)
     {
-        Dispatcher.Invoke(() =>
+        await Dispatcher.InvokeAsync(async () =>
         {
             _playWhenOpened = false;
             PlayPauseButton.Content = "▶";
             var detail = e.ErrorException?.Message;
+            if (_currentTrack is not null)
+            {
+                _failedTrackIds.Add(_currentTrack.Id);
+                PageStatus.Text = $"Skipping unavailable or DRM-protected track: {_currentTrack.Title}";
+                if (await TrySkipUnavailableTrackAsync()) return;
+            }
             PageStatus.Text = string.IsNullOrWhiteSpace(detail)
-                ? "This track could not be played by Windows Media Player."
+                ? "No other playable tracks were found."
                 : $"Playback failed: {detail}";
         });
     }
@@ -478,6 +512,10 @@ public partial class MainWindow : Window
         TaskCanceledException => "SoundCloud took too long to respond.",
         _ => string.IsNullOrWhiteSpace(ex.Message) ? "Something went wrong." : ex.Message
     };
+
+    private static bool IsSkippablePlaybackFailure(Exception ex) =>
+        ex is HttpRequestException ||
+        ex is InvalidOperationException && ex.Message.Contains("not available", StringComparison.OrdinalIgnoreCase);
 
     private static string FormatTime(TimeSpan time) => time.TotalHours >= 1 ? time.ToString(@"h\:mm\:ss") : time.ToString(@"m\:ss");
 
