@@ -16,6 +16,13 @@ namespace SoundCloudDesktop;
 
 public partial class MainWindow : Window
 {
+    private enum RepeatMode
+    {
+        Off,
+        Playlist,
+        Track
+    }
+
     private readonly SoundCloudApi _api = new();
     private readonly TokenStore _tokenStore = new();
     private readonly ObservableCollection<Track> _tracks = new();
@@ -32,7 +39,7 @@ public partial class MainWindow : Window
     private Track? _currentTrack;
     private int _currentIndex = -1;
     private bool _isLoading;
-    private bool _repeat;
+    private RepeatMode _repeatMode;
     private bool _shuffle;
     private bool _isSeeking;
     private bool _playWhenOpened;
@@ -405,9 +412,19 @@ public partial class MainWindow : Window
 
     private void Repeat_Click(object sender, RoutedEventArgs e)
     {
-        _repeat = !_repeat;
-        SetToggleVisual(RepeatButton, _repeat);
-        PageStatus.Text = _repeat ? "Repeat on" : "Repeat off";
+        _repeatMode = _repeatMode switch
+        {
+            RepeatMode.Off => RepeatMode.Playlist,
+            RepeatMode.Playlist => RepeatMode.Track,
+            _ => RepeatMode.Off
+        };
+        SetRepeatVisual();
+        PageStatus.Text = _repeatMode switch
+        {
+            RepeatMode.Playlist => "Repeat playlist on",
+            RepeatMode.Track => "Repeat track on",
+            _ => "Repeat off"
+        };
     }
 
     private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -452,10 +469,18 @@ public partial class MainWindow : Window
 
     private async void Player_MediaEnded(object? sender, EventArgs e)
     {
-        if (_repeat)
+        if (_repeatMode == RepeatMode.Track)
         {
             _player.Position = TimeSpan.Zero;
             _player.Play();
+            return;
+        }
+
+        if (_repeatMode == RepeatMode.Off && !HasAutomaticNextTrack())
+        {
+            _playWhenOpened = false;
+            PlayPauseButton.Content = "▶";
+            PageStatus.Text = "Playback finished.";
             return;
         }
 
@@ -588,6 +613,26 @@ public partial class MainWindow : Window
         button.Foreground = enabled ? Brushes.White : (Brush)FindResource("MutedBrush");
         button.BorderBrush = enabled ? (Brush)FindResource("OrangeBrush") : Brushes.Transparent;
         button.BorderThickness = enabled ? new Thickness(1) : new Thickness(0);
+    }
+
+    private void SetRepeatVisual()
+    {
+        SetToggleVisual(RepeatButton, _repeatMode != RepeatMode.Off);
+        RepeatButton.Content = _repeatMode == RepeatMode.Track ? "↻¹" : "↻";
+        RepeatButton.ToolTip = _repeatMode switch
+        {
+            RepeatMode.Playlist => "Repeat current playlist",
+            RepeatMode.Track => "Repeat current track",
+            _ => "Repeat off"
+        };
+    }
+
+    private bool HasAutomaticNextTrack()
+    {
+        if (CurrentQueue.Count == 0) return false;
+        if (!_shuffle) return _currentIndex >= 0 && _currentIndex < CurrentQueue.Count - 1;
+        if (_shuffleOrder.Count != CurrentQueue.Count) BuildShuffleOrder();
+        return _shufflePosition >= 0 && _shufflePosition < _shuffleOrder.Count - 1;
     }
 
     private void BuildShuffleOrder()
