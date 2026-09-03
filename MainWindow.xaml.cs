@@ -333,6 +333,7 @@ public partial class MainWindow : Window
             _currentMediaFile = localFile;
             _playWhenOpened = true;
             _player.Open(new Uri(localFile, UriKind.Absolute));
+            _player.Volume = VolumeSlider.Value;
             _positionTimer.Start();
             PageStatus.Text = "Now playing";
         }
@@ -455,6 +456,7 @@ public partial class MainWindow : Window
     {
         Dispatcher.Invoke(() =>
         {
+            _player.Volume = VolumeSlider.Value;
             if (_playWhenOpened)
             {
                 _player.Play();
