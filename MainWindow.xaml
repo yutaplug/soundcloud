@@ -49,7 +49,7 @@
         <Grid Margin="22,0">
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <TextBlock Text="soundcloud" Foreground="{StaticResource OrangeBrush}" FontSize="20" FontWeight="Bold" />
-            <TextBlock Text=" / Liked tracks" Foreground="{StaticResource MutedBrush}" FontSize="15" VerticalAlignment="Center" Margin="10,3,0,0" />
+            <TextBlock x:Name="SectionTitle" Text=" / Liked tracks" Foreground="{StaticResource MutedBrush}" FontSize="15" VerticalAlignment="Center" Margin="10,3,0,0" />
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
             <TextBlock x:Name="ProfileName" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
@@ -62,24 +62,27 @@
         <Grid.ColumnDefinitions><ColumnDefinition Width="210" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
         <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,1,0" Padding="12,22">
           <StackPanel>
-            <Button Content="♫   Liked tracks" Style="{StaticResource SidebarButton}" Foreground="White" Background="#252831" />
+            <Button x:Name="LikedTracksButton" Content="♫   Liked tracks" Style="{StaticResource SidebarButton}" Foreground="White" Background="#252831" Click="LikedTracks_Click" />
+            <Button x:Name="LikedPlaylistsButton" Content="▦   Liked playlists" Style="{StaticResource SidebarButton}" Click="LikedPlaylists_Click" />
             <Button Content="↻   Refresh" Style="{StaticResource SidebarButton}" Click="Refresh_Click" />
             <Separator Margin="10,18" Background="{StaticResource LineBrush}" />
             <TextBlock Text="YOUR LIBRARY" Foreground="{StaticResource MutedBrush}" FontSize="10" FontWeight="Bold" Margin="14,0,0,9" />
-            <TextBlock Text="All liked songs are loaded automatically, including additional pages." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="14,0,12,0" />
+            <TextBlock Text="Your liked songs and playlists are loaded automatically, including additional pages." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="14,0,12,0" />
           </StackPanel>
         </Border>
 
         <Grid Grid.Column="1" Margin="30,25,30,16">
           <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-          <DockPanel Grid.Row="0">
-            <TextBlock Text="Liked tracks" FontSize="28" FontWeight="SemiBold" />
+          <DockPanel Grid.Row="0" LastChildFill="False">
+            <Button x:Name="BackToPlaylistsButton" Content="←" ToolTip="Back to liked playlists" Style="{StaticResource IconButton}" DockPanel.Dock="Left" Margin="0,0,10,0" Visibility="Collapsed" Click="BackToPlaylists_Click" />
+            <TextBlock x:Name="PageTitle" Text="Liked tracks" FontSize="28" FontWeight="SemiBold" />
             <TextBlock x:Name="TrackCount" Text="" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Bottom" Margin="12,0,0,4" />
             <TextBox x:Name="SearchBox" Width="230" Height="34" DockPanel.Dock="Right" Margin="10,0,0,0" Padding="10,7" Background="#20232B" Foreground="{StaticResource TextBrush}" BorderBrush="#343844" BorderThickness="1" ToolTip="Search your liked tracks" TextChanged="SearchBox_TextChanged" />
-            <Button x:Name="PlayAllButton" Content="▶  Play all" Style="{StaticResource AccentButton}" DockPanel.Dock="Right" Click="PlayAll_Click" />
+            <Button x:Name="PlayAllButton" Content="▶  Play all" Style="{StaticResource AccentButton}" DockPanel.Dock="Right" Width="100" Height="34" Padding="8,5" Margin="10,0,0,0" Click="PlayAll_Click" />
           </DockPanel>
           <TextBlock x:Name="PageStatus" Grid.Row="1" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,7,0,16" />
-          <ListView x:Name="TrackList" Grid.Row="2" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" SelectionChanged="TrackList_SelectionChanged" MouseDoubleClick="TrackList_MouseDoubleClick">
+          <Grid x:Name="TracksContent" Grid.Row="2">
+          <ListView x:Name="TrackList" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" SelectionChanged="TrackList_SelectionChanged" MouseDoubleClick="TrackList_MouseDoubleClick">
             <ListView.Resources>
               <Style TargetType="ListViewItem">
                 <Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="0,0,0,5" /><Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -106,11 +109,44 @@
               </DataTemplate>
             </ListView.ItemTemplate>
           </ListView>
-          <StackPanel x:Name="EmptyState" Grid.Row="2" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center">
+          <StackPanel x:Name="EmptyState" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center">
             <TextBlock Text="♫" FontSize="38" Foreground="{StaticResource OrangeBrush}" HorizontalAlignment="Center" />
             <TextBlock Text="No liked tracks found" FontSize="18" HorizontalAlignment="Center" Margin="0,8,0,0" />
             <TextBlock Text="Like a track on SoundCloud, then refresh this page." Foreground="{StaticResource MutedBrush}" Margin="0,5,0,0" />
           </StackPanel>
+          </Grid>
+          <Grid x:Name="PlaylistsContent" Grid.Row="2" Visibility="Collapsed">
+            <ListView x:Name="PlaylistList" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" MouseDoubleClick="PlaylistList_MouseDoubleClick">
+              <ListView.Resources>
+                <Style TargetType="ListViewItem">
+                  <Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="0,0,0,5" /><Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                  <Setter Property="Background" Value="Transparent" />
+                  <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#1D2028" /></Trigger><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#272B34" /></Trigger></Style.Triggers>
+                </Style>
+              </ListView.Resources>
+              <ListView.ItemTemplate>
+                <DataTemplate>
+                  <Grid Height="76" Margin="6,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="68" /><ColumnDefinition Width="*" /><ColumnDefinition Width="120" /></Grid.ColumnDefinitions>
+                    <Grid Grid.Column="0" Width="58" Height="58" VerticalAlignment="Center">
+                      <Border Background="#272A32" CornerRadius="4" />
+                      <TextBlock Text="▦" Foreground="{StaticResource OrangeBrush}" FontSize="25" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      <Image Source="{Binding ArtworkUrl}" Stretch="UniformToFill" />
+                    </Grid>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,8,0">
+                      <TextBlock Text="{Binding Title}" FontSize="14" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Creator}" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="{Binding TrackCountText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,18,0" />
+                  </Grid>
+                </DataTemplate>
+              </ListView.ItemTemplate>
+            </ListView>
+            <StackPanel x:Name="PlaylistEmptyState" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center">
+              <TextBlock Text="▦" FontSize="38" Foreground="{StaticResource OrangeBrush}" HorizontalAlignment="Center" />
+              <TextBlock Text="No liked playlists found" FontSize="18" HorizontalAlignment="Center" Margin="0,8,0,0" />
+            </StackPanel>
+          </Grid>
         </Grid>
       </Grid>
       <Border Grid.Row="2" Background="#171920" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0" Padding="20,11">

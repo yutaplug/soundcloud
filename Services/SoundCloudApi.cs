@@ -62,6 +62,149 @@ public sealed class SoundCloudApi : IDisposable
         return tracks;
     }
 
+    public async Task<IReadOnlyList<Playlist>> GetLikedPlaylistsAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_token) || string.IsNullOrWhiteSpace(_userId)) throw new InvalidOperationException("Log in first.");
+
+        var playlistIds = new List<long>();
+        var directPlaylists = new List<Playlist>();
+        var idsUrl = $"{WebApiBase}/me/playlist_likes/ids?limit=5000&linked_partitioning=1";
+        var seenUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        while (!string.IsNullOrWhiteSpace(idsUrl) && seenUrls.Add(idsUrl))
+        {
+            using var page = await GetJsonAsync(idsUrl, cancellationToken);
+            var root = page.RootElement;
+            var collection = root.ValueKind == JsonValueKind.Array
+                ? root
+                : root.TryGetProperty("collection", out var found) ? found : default;
+
+            if (collection.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in collection.EnumerateArray())
+                {
+                    var playlist = Playlist.FromJson(item);
+                    if (playlist.Id > 0 && !string.Equals(playlist.Title, "Untitled playlist", StringComparison.Ordinal)) directPlaylists.Add(playlist);
+                    else
+                    {
+                        var id = item.ValueKind == JsonValueKind.Number && item.TryGetInt64(out var number) ? number : GetLong(item, "id");
+                        if (id <= 0) id = GetLong(item, "playlist_id");
+                        if (id > 0) playlistIds.Add(id);
+                    }
+                }
+            }
+
+            idsUrl = root.ValueKind == JsonValueKind.Object ? GetString(root, "next_href") : null;
+        }
+
+        var playlists = new List<Playlist>();
+        playlists.AddRange(directPlaylists);
+        foreach (var id in playlistIds.Distinct())
+        {
+            try
+            {
+                using var detail = await GetJsonAsync($"{WebApiBase}/playlists/{id}?representation=full", cancellationToken);
+                var playlist = Playlist.FromJson(detail.RootElement);
+                if (playlist.Id > 0) playlists.Add(playlist);
+            }
+            catch (HttpRequestException)
+            {
+                // A deleted or private playlist should not hide the rest of the liked library.
+            }
+        }
+
+        return playlists;
+    }
+
+    public async Task<IReadOnlyList<Track>> GetPlaylistTracksAsync(Playlist playlist, CancellationToken cancellationToken = default)
+    {
+        if (playlist.Id <= 0) return Array.Empty<Track>();
+
+        // The playlist detail endpoint can return only a small preview of the
+        // tracks. The dedicated tracks endpoint is paginated and returns the
+        // complete playlist.
+        var entries = new List<Track>();
+        var nextUrl = $"{WebApiBase}/playlists/{playlist.Id}/tracks?limit=200&offset=0&linked_partitioning=1";
+        var seenUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            while (!string.IsNullOrWhiteSpace(nextUrl) && seenUrls.Add(nextUrl))
+            {
+                using var page = await GetJsonAsync(nextUrl, cancellationToken);
+                var root = page.RootElement;
+                var collection = root.ValueKind == JsonValueKind.Array
+                    ? root
+                    : root.TryGetProperty("collection", out var found) ? found : default;
+
+                if (collection.ValueKind == JsonValueKind.Array)
+                    entries.AddRange(collection.EnumerateArray().Select(Track.FromJson));
+
+                nextUrl = root.ValueKind == JsonValueKind.Object ? GetString(root, "next_href") : null;
+            }
+        }
+        catch (HttpRequestException ex) when (ex.Message.Contains("404", StringComparison.OrdinalIgnoreCase))
+        {
+            // Some accounts/playlists do not expose the dedicated tracks route.
+            // The detail response is compatible with those playlists and still
+            // includes the complete track references when representation=full is used.
+            entries.Clear();
+            using var detail = await GetJsonAsync($"{WebApiBase}/playlists/{playlist.Id}?representation=full", cancellationToken);
+            var root = detail.RootElement;
+            var source = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("playlist", out var nested) ? nested : root;
+            if (source.ValueKind == JsonValueKind.Object && source.TryGetProperty("tracks", out var tracks) && tracks.ValueKind == JsonValueKind.Array)
+                entries.AddRange(tracks.EnumerateArray().Select(Track.FromJson));
+        }
+
+        // Some playlist entries are returned as IDs or as objects containing
+        // only an ID. Expand those entries so they do not appear as Untitled.
+        var missingIds = entries
+            .Where(track => track.Id > 0 && string.Equals(track.Title, "Untitled", StringComparison.Ordinal))
+            .Select(track => track.Id)
+            .Distinct()
+            .ToList();
+        var detailedTracks = await LoadTrackDetailsAsync(missingIds, cancellationToken);
+
+        var result = new List<Track>(entries.Count);
+        var seenIds = new HashSet<long>();
+        foreach (var track in entries)
+        {
+            if (track.Id <= 0 || !seenIds.Add(track.Id)) continue;
+            var resolvedTrack = detailedTracks.TryGetValue(track.Id, out var detailed) ? detailed : track;
+            if (!string.Equals(resolvedTrack.Title, "Untitled", StringComparison.Ordinal)) result.Add(resolvedTrack);
+        }
+
+        return result;
+    }
+
+    private async Task<Dictionary<long, Track>> LoadTrackDetailsAsync(IEnumerable<long> ids, CancellationToken cancellationToken)
+    {
+        var details = new Dictionary<long, Track>();
+        using var limiter = new SemaphoreSlim(8);
+        var tasks = ids.Select(async id =>
+        {
+            await limiter.WaitAsync(cancellationToken);
+            try
+            {
+                using var document = await GetJsonAsync($"{WebApiBase}/tracks/{id}", cancellationToken);
+                var track = Track.FromJson(document.RootElement);
+                return (id, track);
+            }
+            catch (HttpRequestException)
+            {
+                return (id, new Track());
+            }
+            finally
+            {
+                limiter.Release();
+            }
+        }).ToArray();
+
+        foreach (var (id, track) in await Task.WhenAll(tasks))
+            if (track.Id > 0 && !string.Equals(track.Title, "Untitled", StringComparison.Ordinal)) details[id] = track;
+        return details;
+    }
+
     public async Task<string> GetPlayableUrlAsync(Track track, CancellationToken cancellationToken = default)
     {
         if (!string.IsNullOrWhiteSpace(track.StreamUrl)) return await ResolveStreamAsync(track.StreamUrl, cancellationToken);
@@ -154,6 +297,7 @@ public sealed class SoundCloudApi : IDisposable
     }
 
     private static string? GetString(JsonElement element, string name) => element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) ? value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString() : null;
+    private static long GetLong(JsonElement element, string name) => element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.TryGetInt64(out var result) ? result : 0;
     private static string NormalizeImageUrl(string url) => string.IsNullOrWhiteSpace(url) ? "" : url.Replace("-large.", "-t500x500.", StringComparison.OrdinalIgnoreCase);
 
     public void Dispose() => _http.Dispose();

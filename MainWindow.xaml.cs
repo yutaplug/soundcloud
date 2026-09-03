@@ -20,6 +20,10 @@ public partial class MainWindow : Window
     private readonly TokenStore _tokenStore = new();
     private readonly ObservableCollection<Track> _tracks = new();
     private readonly ICollectionView _trackView;
+    private readonly ObservableCollection<Playlist> _playlists = new();
+    private readonly ICollectionView _playlistView;
+    private readonly ObservableCollection<Track> _playlistTracks = new();
+    private readonly ICollectionView _playlistTrackView;
     private readonly MediaPlayer _player = new();
     private readonly DispatcherTimer _positionTimer;
     private readonly Random _random = new();
@@ -33,13 +37,21 @@ public partial class MainWindow : Window
     private bool _playWhenOpened;
     private string? _currentMediaFile;
     private int _shufflePosition = -1;
+    private bool _showPlaylists;
+    private bool _showPlaylistTracks;
+    private Playlist? _currentPlaylist;
 
     public MainWindow()
     {
         InitializeComponent();
         _trackView = CollectionViewSource.GetDefaultView(_tracks);
         _trackView.Filter = TrackMatchesSearch;
+        _playlistView = CollectionViewSource.GetDefaultView(_playlists);
+        _playlistView.Filter = PlaylistMatchesSearch;
+        _playlistTrackView = CollectionViewSource.GetDefaultView(_playlistTracks);
+        _playlistTrackView.Filter = TrackMatchesSearch;
         TrackList.ItemsSource = _trackView;
+        PlaylistList.ItemsSource = _playlistView;
         _player.Volume = VolumeSlider.Value;
         _player.MediaOpened += Player_MediaOpened;
         _player.MediaEnded += Player_MediaEnded;
@@ -83,7 +95,7 @@ public partial class MainWindow : Window
             LoginView.Visibility = Visibility.Collapsed;
             AppView.Visibility = Visibility.Visible;
             SetBusy(false);
-            await LoadTracksAsync();
+            await LoadLibraryAsync();
         }
         catch (Exception ex)
         {
@@ -120,12 +132,122 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void Refresh_Click(object sender, RoutedEventArgs e) => await LoadTracksAsync();
+    private async Task LoadLibraryAsync()
+    {
+        await LoadTracksAsync();
+        await LoadPlaylistsAsync();
+    }
+
+    private async Task LoadPlaylistsAsync()
+    {
+        if (_isLoading) return;
+        SetBusy(true, "Loading liked playlists…");
+        try
+        {
+            _playlists.Clear();
+            var loaded = await _api.GetLikedPlaylistsAsync();
+            var unique = new HashSet<long>();
+            foreach (var playlist in loaded)
+                if ((playlist.Id <= 0 || unique.Add(playlist.Id)) && playlist.Title.Length > 0) _playlists.Add(playlist);
+            UpdatePlaylistSummary();
+        }
+        catch (Exception ex)
+        {
+            PageStatus.Text = FriendlyError(ex);
+            PlaylistEmptyState.Visibility = Visibility.Visible;
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private async void Refresh_Click(object sender, RoutedEventArgs e) => await LoadLibraryAsync();
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         _trackView.Refresh();
+        _playlistView.Refresh();
+        _playlistTrackView.Refresh();
+        UpdateVisibleSummary();
+    }
+
+    private void LikedTracks_Click(object sender, RoutedEventArgs e) => ShowTracks();
+
+    private void LikedPlaylists_Click(object sender, RoutedEventArgs e) => ShowPlaylists();
+
+    private async void PlaylistList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (PlaylistList.SelectedItem is Playlist playlist) await OpenPlaylistAsync(playlist);
+    }
+
+    private void BackToPlaylists_Click(object sender, RoutedEventArgs e) => ShowPlaylists();
+
+    private void ShowTracks()
+    {
+        _showPlaylists = false;
+        _showPlaylistTracks = false;
+        _currentPlaylist = null;
+        SectionTitle.Text = " / Liked tracks";
+        PageTitle.Text = "Liked tracks";
+        TrackList.ItemsSource = _trackView;
+        TracksContent.Visibility = Visibility.Visible;
+        PlaylistsContent.Visibility = Visibility.Collapsed;
+        PlayAllButton.Visibility = Visibility.Visible;
+        BackToPlaylistsButton.Visibility = Visibility.Collapsed;
+        LikedTracksButton.Background = (Brush)FindResource("PanelLightBrush");
+        LikedPlaylistsButton.Background = Brushes.Transparent;
         UpdateTrackSummary();
+    }
+
+    private void ShowPlaylists()
+    {
+        _showPlaylists = true;
+        _showPlaylistTracks = false;
+        _currentPlaylist = null;
+        SectionTitle.Text = " / Liked playlists";
+        PageTitle.Text = "Liked playlists";
+        TracksContent.Visibility = Visibility.Collapsed;
+        PlaylistsContent.Visibility = Visibility.Visible;
+        PlayAllButton.Visibility = Visibility.Collapsed;
+        BackToPlaylistsButton.Visibility = Visibility.Collapsed;
+        LikedTracksButton.Background = Brushes.Transparent;
+        LikedPlaylistsButton.Background = (Brush)FindResource("PanelLightBrush");
+        UpdatePlaylistSummary();
+    }
+
+    private async Task OpenPlaylistAsync(Playlist playlist)
+    {
+        if (_isLoading) return;
+        SetBusy(true, $"Loading “{playlist.Title}”…");
+        try
+        {
+            var loaded = await _api.GetPlaylistTracksAsync(playlist);
+            _playlistTracks.Clear();
+            foreach (var track in loaded) _playlistTracks.Add(track);
+            _currentPlaylist = playlist;
+            _showPlaylists = false;
+            _showPlaylistTracks = true;
+            SectionTitle.Text = $" / {playlist.Title}";
+            PageTitle.Text = playlist.Title;
+            TrackList.ItemsSource = _playlistTrackView;
+            TracksContent.Visibility = Visibility.Visible;
+            PlaylistsContent.Visibility = Visibility.Collapsed;
+            PlayAllButton.Visibility = Visibility.Visible;
+            BackToPlaylistsButton.Visibility = Visibility.Visible;
+            _shuffleOrder.Clear();
+            _shufflePosition = -1;
+            if (_shuffle) BuildShuffleOrder();
+            UpdatePlaylistTrackSummary();
+        }
+        catch (Exception ex)
+        {
+            PageStatus.Text = FriendlyError(ex);
+        }
+        finally
+        {
+            SetBusy(false);
+        }
     }
 
     private void Logout_Click(object sender, RoutedEventArgs e)
@@ -133,6 +255,8 @@ public partial class MainWindow : Window
         _player.Stop();
         _positionTimer.Stop();
         _tracks.Clear();
+        _playlists.Clear();
+        _playlistTracks.Clear();
         _tokenStore.Delete();
         _currentTrack = null;
         _currentIndex = -1;
@@ -158,12 +282,14 @@ public partial class MainWindow : Window
 
     private async void PlayAll_Click(object sender, RoutedEventArgs e)
     {
-        if (_trackView.Cast<Track>().FirstOrDefault() is Track track) await PlayTrackAsync(track);
+        var track = (_showPlaylistTracks ? _playlistTrackView : _trackView).Cast<Track>().FirstOrDefault();
+        if (track is not null) await PlayTrackAsync(track);
     }
 
     private async Task PlayTrackAsync(Track track)
     {
-        var index = _tracks.IndexOf(track);
+        var queue = CurrentQueue;
+        var index = queue.IndexOf(track);
         if (index >= 0)
         {
             _currentIndex = index;
@@ -209,7 +335,7 @@ public partial class MainWindow : Window
     {
         if (_currentTrack is null)
         {
-            if (_tracks.Count > 0) _ = PlayTrackAsync(_tracks[0]);
+            if (CurrentQueue.Count > 0) _ = PlayTrackAsync(CurrentQueue[0]);
             return;
         }
         if (PlayPauseButton.Content?.ToString() == "Ⅱ")
@@ -227,18 +353,18 @@ public partial class MainWindow : Window
 
     private async void Previous_Click(object sender, RoutedEventArgs e)
     {
-        if (_tracks.Count == 0) return;
-        var index = _shuffle ? GetPreviousShuffleIndex() : (_currentIndex <= 0 ? _tracks.Count - 1 : _currentIndex - 1);
-        await PlayTrackAsync(_tracks[index]);
+        if (CurrentQueue.Count == 0) return;
+        var index = _shuffle ? GetPreviousShuffleIndex() : (_currentIndex <= 0 ? CurrentQueue.Count - 1 : _currentIndex - 1);
+        await PlayTrackAsync(CurrentQueue[index]);
     }
 
     private async void Next_Click(object sender, RoutedEventArgs e) => await PlayNextAsync();
 
     private async Task PlayNextAsync()
     {
-        if (_tracks.Count == 0) return;
-        var index = _shuffle ? GetNextShuffleIndex() : (_currentIndex + 1) % _tracks.Count;
-        await PlayTrackAsync(_tracks[index]);
+        if (CurrentQueue.Count == 0) return;
+        var index = _shuffle ? GetNextShuffleIndex() : (_currentIndex + 1) % CurrentQueue.Count;
+        await PlayTrackAsync(CurrentQueue[index]);
     }
 
     private void Shuffle_Click(object sender, RoutedEventArgs e)
@@ -364,6 +490,24 @@ public partial class MainWindow : Window
                track.Artist.Contains(query, StringComparison.OrdinalIgnoreCase);
     }
 
+    private bool PlaylistMatchesSearch(object item)
+    {
+        if (item is not Playlist playlist) return false;
+        var query = SearchBox?.Text.Trim() ?? "";
+        return string.IsNullOrWhiteSpace(query) ||
+               playlist.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+               playlist.Creator.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void UpdateVisibleSummary()
+    {
+        if (_showPlaylistTracks) UpdatePlaylistTrackSummary();
+        else if (_showPlaylists) UpdatePlaylistSummary();
+        else UpdateTrackSummary();
+    }
+
+    private IList<Track> CurrentQueue => _showPlaylistTracks ? _playlistTracks : _tracks;
+
     private void UpdateTrackSummary()
     {
         var visibleCount = _trackView.Cast<Track>().Count();
@@ -373,6 +517,30 @@ public partial class MainWindow : Window
         PageStatus.Text = _tracks.Count == 0
             ? ""
             : string.IsNullOrWhiteSpace(SearchBox?.Text) ? "Double-click a track to play it." : "Showing liked tracks matching your search.";
+        EmptyState.Visibility = visibleCount == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdatePlaylistSummary()
+    {
+        var visibleCount = _playlistView.Cast<Playlist>().Count();
+        TrackCount.Text = string.IsNullOrWhiteSpace(SearchBox?.Text)
+            ? (_playlists.Count == 1 ? "1 playlist" : $"{_playlists.Count:N0} playlists")
+            : $"{visibleCount:N0} match{(visibleCount == 1 ? "" : "es")}";
+        PageStatus.Text = _playlists.Count == 0
+            ? ""
+            : string.IsNullOrWhiteSpace(SearchBox?.Text) ? "Your liked playlists." : "Showing liked playlists matching your search.";
+        PlaylistEmptyState.Visibility = visibleCount == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdatePlaylistTrackSummary()
+    {
+        var visibleCount = _playlistTrackView.Cast<Track>().Count();
+        TrackCount.Text = string.IsNullOrWhiteSpace(SearchBox?.Text)
+            ? (_playlistTracks.Count == 1 ? "1 track" : $"{_playlistTracks.Count:N0} tracks")
+            : $"{visibleCount:N0} match{(visibleCount == 1 ? "" : "es")}";
+        PageStatus.Text = _playlistTracks.Count == 0
+            ? "This playlist has no visible tracks."
+            : string.IsNullOrWhiteSpace(SearchBox?.Text) ? "Double-click a track to play it." : "Showing playlist tracks matching your search.";
         EmptyState.Visibility = visibleCount == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -387,7 +555,7 @@ public partial class MainWindow : Window
     private void BuildShuffleOrder()
     {
         _shuffleOrder.Clear();
-        for (var i = 0; i < _tracks.Count; i++) _shuffleOrder.Add(i);
+        for (var i = 0; i < CurrentQueue.Count; i++) _shuffleOrder.Add(i);
         for (var i = _shuffleOrder.Count - 1; i > 0; i--)
         {
             var j = _random.Next(i + 1);
@@ -405,14 +573,14 @@ public partial class MainWindow : Window
     private void SyncShufflePosition()
     {
         if (!_shuffle || _currentIndex < 0) return;
-        if (_shuffleOrder.Count != _tracks.Count) BuildShuffleOrder();
+        if (_shuffleOrder.Count != CurrentQueue.Count) BuildShuffleOrder();
         var position = _shuffleOrder.IndexOf(_currentIndex);
         if (position >= 0) _shufflePosition = position;
     }
 
     private int GetNextShuffleIndex()
     {
-        if (_shuffleOrder.Count != _tracks.Count) BuildShuffleOrder();
+        if (_shuffleOrder.Count != CurrentQueue.Count) BuildShuffleOrder();
         var nextPosition = _shufflePosition < 0 ? 0 : _shufflePosition + 1;
         if (nextPosition >= _shuffleOrder.Count)
         {
@@ -425,7 +593,7 @@ public partial class MainWindow : Window
 
     private int GetPreviousShuffleIndex()
     {
-        if (_shuffleOrder.Count != _tracks.Count) BuildShuffleOrder();
+        if (_shuffleOrder.Count != CurrentQueue.Count) BuildShuffleOrder();
         var previousPosition = _shufflePosition <= 0 ? _shuffleOrder.Count - 1 : _shufflePosition - 1;
         _shufflePosition = previousPosition;
         return _shuffleOrder[previousPosition];

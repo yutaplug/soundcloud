@@ -19,7 +19,16 @@ public sealed class Track
 
     public static Track FromJson(JsonElement item)
     {
+        if (item.ValueKind == JsonValueKind.Number && item.TryGetInt64(out var numericId))
+            return new Track { Id = numericId };
+        if (item.ValueKind == JsonValueKind.String && long.TryParse(item.GetString(), out var stringId))
+            return new Track { Id = stringId };
+        if (item.ValueKind != JsonValueKind.Object) return new Track();
+
         var source = item.TryGetProperty("track", out var nested) ? nested : item;
+        if (source.ValueKind == JsonValueKind.Number && source.TryGetInt64(out var nestedId))
+            return new Track { Id = nestedId };
+        if (source.ValueKind != JsonValueKind.Object) return new Track();
         var user = source.TryGetProperty("user", out var userJson) ? userJson : default;
         var artwork = GetString(source, "artwork_url");
         if (string.IsNullOrWhiteSpace(artwork)) artwork = GetString(user, "avatar_url");
