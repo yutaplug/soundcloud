@@ -37,5 +37,5 @@ public sealed class Playlist
     private static string? GetString(JsonElement element, string name) => element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) ? value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString() : null;
     private static long GetLong(JsonElement element, string name) => element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.TryGetInt64(out var result) ? result : 0;
     private static int GetInt(JsonElement element, string name) => (int)Math.Clamp(GetLong(element, name), 0, int.MaxValue);
-    private static string NormalizeImageUrl(string url) => string.IsNullOrWhiteSpace(url) ? "" : url.Replace("-large.", "-t500x500.", StringComparison.OrdinalIgnoreCase);
+    private static string NormalizeImageUrl(string url) => string.IsNullOrWhiteSpace(url) ? "" : url.Replace("-large.", "-t67x67.", StringComparison.OrdinalIgnoreCase);
 }

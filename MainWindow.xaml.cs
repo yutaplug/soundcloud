@@ -264,6 +264,8 @@ public partial class MainWindow : Window
     private void Logout_Click(object sender, RoutedEventArgs e)
     {
         _player.Stop();
+        _player.Close();
+        DeleteCurrentMediaFile();
         _positionTimer.Stop();
         _tracks.Clear();
         _playlists.Clear();
@@ -312,7 +314,7 @@ public partial class MainWindow : Window
         TrackList.SelectedItem = track;
         NowPlayingTitle.Text = track.Title;
         NowPlayingArtist.Text = track.Artist;
-        NowPlayingArtwork.Source = ImageSourceFromUrl(track.ArtworkUrl);
+        NowPlayingArtwork.Source = ImageSourceFromUrl(track.PlayerArtworkUrl);
         ElapsedText.Text = "0:00";
         TotalText.Text = track.DurationText;
         ProgressSlider.Value = 0;
@@ -322,11 +324,12 @@ public partial class MainWindow : Window
         try
         {
             SetBusy(true, $"Buffering “{track.Title}”…");
+            _player.Stop();
+            _player.Close();
+            DeleteCurrentMediaFile();
             var url = await _api.GetPlayableUrlAsync(track);
             if (string.IsNullOrWhiteSpace(url)) throw new InvalidOperationException("This track is not available for streaming.");
             var localFile = await _api.DownloadStreamToTempFileAsync(url);
-            _player.Stop();
-            DeleteCurrentMediaFile();
             _currentMediaFile = localFile;
             _playWhenOpened = true;
             _player.Open(new Uri(localFile, UriKind.Absolute));
@@ -479,6 +482,9 @@ public partial class MainWindow : Window
         if (_repeatMode == RepeatMode.Off && !HasAutomaticNextTrack())
         {
             _playWhenOpened = false;
+            _player.Stop();
+            _player.Close();
+            DeleteCurrentMediaFile();
             PlayPauseButton.Content = "▶";
             PageStatus.Text = "Playback finished.";
             return;
@@ -503,6 +509,9 @@ public partial class MainWindow : Window
                 PageStatus.Text = $"Skipping unavailable or DRM-protected track: {_currentTrack.Title}";
                 if (await TrySkipUnavailableTrackAsync()) return;
             }
+            _player.Stop();
+            _player.Close();
+            DeleteCurrentMediaFile();
             PageStatus.Text = string.IsNullOrWhiteSpace(detail)
                 ? "No other playable tracks were found."
                 : $"Playback failed: {detail}";

@@ -8,6 +8,9 @@ public sealed class Track
     public string Title { get; init; } = "Untitled";
     public string Artist { get; init; } = "Unknown artist";
     public string ArtworkUrl { get; init; } = "";
+    public string PlayerArtworkUrl => string.IsNullOrWhiteSpace(ArtworkUrl)
+        ? ""
+        : ArtworkUrl.Replace("-t67x67.", "-t500x500.", StringComparison.OrdinalIgnoreCase);
     public string StreamUrl { get; set; } = "";
     public string PermalinkUrl { get; init; } = "";
     public TimeSpan Duration { get; init; }
@@ -58,7 +61,7 @@ public sealed class Track
     }
 
     private static string NormalizeImageUrl(string url) =>
-        string.IsNullOrWhiteSpace(url) ? "" : url.Replace("-large.", "-t500x500.", StringComparison.OrdinalIgnoreCase);
+        string.IsNullOrWhiteSpace(url) ? "" : url.Replace("-large.", "-t67x67.", StringComparison.OrdinalIgnoreCase);
 
     private static string? GetProgressiveStreamUrl(JsonElement source)
     {

@@ -49,7 +49,7 @@
         <Grid Margin="22,0">
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <TextBlock Text="soundcloud" Foreground="{StaticResource OrangeBrush}" FontSize="20" FontWeight="Bold" />
-            <TextBlock x:Name="SectionTitle" Text=" / Liked tracks" Foreground="{StaticResource MutedBrush}" FontSize="15" VerticalAlignment="Center" Margin="10,3,0,0" />
+            <TextBlock x:Name="SectionTitle" Visibility="Collapsed" />
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
             <TextBlock x:Name="ProfileName" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
@@ -65,9 +65,6 @@
             <Button x:Name="LikedTracksButton" Content="♫   Liked tracks" Style="{StaticResource SidebarButton}" Foreground="White" Background="#252831" Click="LikedTracks_Click" />
             <Button x:Name="LikedPlaylistsButton" Content="▦   Liked playlists" Style="{StaticResource SidebarButton}" Click="LikedPlaylists_Click" />
             <Button Content="↻   Refresh" Style="{StaticResource SidebarButton}" Click="Refresh_Click" />
-            <Separator Margin="10,18" Background="{StaticResource LineBrush}" />
-            <TextBlock Text="YOUR LIBRARY" Foreground="{StaticResource MutedBrush}" FontSize="10" FontWeight="Bold" Margin="14,0,0,9" />
-            <TextBlock Text="Your liked songs and playlists are loaded automatically, including additional pages." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="14,0,12,0" />
           </StackPanel>
         </Border>
 
@@ -82,7 +79,7 @@
           </DockPanel>
           <TextBlock x:Name="PageStatus" Grid.Row="1" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,7,0,16" />
           <Grid x:Name="TracksContent" Grid.Row="2">
-          <ListView x:Name="TrackList" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" SelectionChanged="TrackList_SelectionChanged" MouseDoubleClick="TrackList_MouseDoubleClick">
+          <ListView x:Name="TrackList" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" SelectionChanged="TrackList_SelectionChanged" MouseDoubleClick="TrackList_MouseDoubleClick">
             <ListView.Resources>
               <Style TargetType="ListViewItem">
                 <Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="0,0,0,5" /><Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -116,7 +113,7 @@
           </StackPanel>
           </Grid>
           <Grid x:Name="PlaylistsContent" Grid.Row="2" Visibility="Collapsed">
-            <ListView x:Name="PlaylistList" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" MouseDoubleClick="PlaylistList_MouseDoubleClick">
+            <ListView x:Name="PlaylistList" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" MouseDoubleClick="PlaylistList_MouseDoubleClick">
               <ListView.Resources>
                 <Style TargetType="ListViewItem">
                   <Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="0,0,0,5" /><Setter Property="HorizontalContentAlignment" Value="Stretch" />
