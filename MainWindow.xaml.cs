@@ -375,6 +375,13 @@ public partial class MainWindow : Window
         }
     }
 
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Space || e.IsRepeat) return;
+        e.Handled = true;
+        PlayPause_Click(sender, e);
+    }
+
     private async void Previous_Click(object sender, RoutedEventArgs e)
     {
         if (CurrentQueue.Count == 0) return;

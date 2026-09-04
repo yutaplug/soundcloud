@@ -1,42 +1,44 @@
 <Window x:Class="SoundCloudDesktop.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="SoundCloud Desktop" Width="1160" Height="760" MinWidth="900" MinHeight="600"
+        Title="SoundCloud Desktop" Width="1180" Height="780" MinWidth="960" MinHeight="620"
         Background="{StaticResource BackgroundBrush}" Foreground="{StaticResource TextBrush}"
-        WindowStartupLocation="CenterScreen" Closing="Window_Closing">
+        WindowStartupLocation="CenterScreen" UseLayoutRounding="True" SnapsToDevicePixels="True" PreviewKeyDown="Window_PreviewKeyDown" Closing="Window_Closing">
   <Window.Resources>
     <Style x:Key="SidebarButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
       <Setter Property="HorizontalContentAlignment" Value="Left" />
-      <Setter Property="Margin" Value="0,2" />
-      <Setter Property="Padding" Value="14,11" />
+      <Setter Property="Margin" Value="0,3" />
+      <Setter Property="Padding" Value="13,11" />
       <Setter Property="FontSize" Value="14" />
       <Style.Triggers>
         <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#262932" /></Trigger>
       </Style.Triggers>
     </Style>
     <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-      <Setter Property="Width" Value="38" /><Setter Property="Height" Value="34" /><Setter Property="Padding" Value="0" />
+      <Setter Property="Width" Value="40" /><Setter Property="Height" Value="38" /><Setter Property="Padding" Value="0" />
       <Setter Property="FontSize" Value="16" />
       <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#292C35" /></Trigger></Style.Triggers>
     </Style>
     <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
       <Setter Property="Background" Value="{StaticResource OrangeBrush}" /><Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Padding" Value="18,10" /><Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="Padding" Value="16,9" /><Setter Property="HorizontalContentAlignment" Value="Center" />
       <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#FF6A22" /></Trigger></Style.Triggers>
     </Style>
   </Window.Resources>
 
   <Grid>
-    <Grid x:Name="LoginView" Visibility="Visible">
-      <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Width="420">
-        <Border Background="{StaticResource PanelBrush}" CornerRadius="12" Padding="34">
+    <Grid x:Name="LoginView" Visibility="Visible" Background="{StaticResource BackgroundBrush}">
+      <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Width="460">
+        <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="18" Padding="42" Effect="{StaticResource CardShadow}">
           <StackPanel>
-            <TextBlock Text="soundcloud" FontSize="30" FontWeight="Bold" Foreground="{StaticResource OrangeBrush}" />
-            <TextBlock Text="Desktop player" FontSize="14" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,30" />
-            <TextBlock Text="OAuth access token" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,7" />
-            <PasswordBox x:Name="TokenBox" Height="42" Padding="11,9" FontSize="14" Background="#20232B" Foreground="White" BorderBrush="#343844" BorderThickness="1" />
-            <TextBlock Text="Paste the oauth_token from your logged-in SoundCloud web session. It stays on this device and is only sent to SoundCloud." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,9,0,18" />
-            <Button x:Name="LoginButton" Content="Log in" Style="{StaticResource AccentButton}" Click="Login_Click" Height="42" />
+            <TextBlock Text="soundcloud" FontSize="32" FontWeight="Bold" Foreground="{StaticResource OrangeBrush}" />
+            <TextBlock Text="Desktop player" FontSize="14" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,34" />
+            <TextBlock Text="Welcome back" FontSize="23" FontWeight="SemiBold" />
+            <TextBlock Text="Connect your SoundCloud session to load your library." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,7,0,26" />
+            <TextBlock Text="OAuth access token" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,8" />
+            <PasswordBox x:Name="TokenBox" Height="44" FontSize="14" Style="{StaticResource PasswordInput}" />
+            <TextBlock Text="Paste the oauth_token from your logged-in SoundCloud web session. It stays on this device and is only sent to SoundCloud." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,10,0,20" />
+            <Button x:Name="LoginButton" Content="Log in  →" Style="{StaticResource AccentButton}" Click="Login_Click" Height="44" />
             <TextBlock x:Name="LoginStatus" Foreground="#F07A63" TextWrapping="Wrap" Margin="0,15,0,0" FontSize="12" />
           </StackPanel>
         </Border>
@@ -44,23 +46,26 @@
     </Grid>
 
     <Grid x:Name="AppView" Visibility="Collapsed">
-      <Grid.RowDefinitions><RowDefinition Height="58" /><RowDefinition Height="*" /><RowDefinition Height="94" /></Grid.RowDefinitions>
-      <Border Grid.Row="0" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Background="#0F1015">
-        <Grid Margin="22,0">
+      <Grid.RowDefinitions><RowDefinition Height="66" /><RowDefinition Height="*" /><RowDefinition Height="104" /></Grid.RowDefinitions>
+      <Border Grid.Row="0" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Background="#10131A">
+        <Grid Margin="28,0">
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="soundcloud" Foreground="{StaticResource OrangeBrush}" FontSize="20" FontWeight="Bold" />
+            <TextBlock Text="soundcloud" Foreground="{StaticResource OrangeBrush}" FontSize="21" FontWeight="Bold" />
             <TextBlock x:Name="SectionTitle" Visibility="Collapsed" />
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-            <TextBlock x:Name="ProfileName" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
-            <Button Content="Log out" Click="Logout_Click" Foreground="{StaticResource MutedBrush}" />
+            <Border Width="30" Height="30" CornerRadius="15" Background="{StaticResource PanelLightBrush}" Margin="0,0,9,0">
+              <TextBlock Text="♫" Foreground="{StaticResource OrangeBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <TextBlock x:Name="ProfileName" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" Margin="0,0,14,0" FontSize="12" />
+            <Button Content="Log out" Click="Logout_Click" Foreground="{StaticResource MutedBrush}" Padding="10,6" />
           </StackPanel>
         </Grid>
       </Border>
 
       <Grid Grid.Row="1">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="210" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-        <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,1,0" Padding="12,22">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="224" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+        <Border Grid.Column="0" Background="#10131A" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,1,0" Padding="16,26">
           <StackPanel>
             <Button x:Name="LikedTracksButton" Content="♫   Liked tracks" Style="{StaticResource SidebarButton}" Foreground="White" Background="#252831" Click="LikedTracks_Click" />
             <Button x:Name="LikedPlaylistsButton" Content="▦   Liked playlists" Style="{StaticResource SidebarButton}" Click="LikedPlaylists_Click" />
@@ -68,23 +73,35 @@
           </StackPanel>
         </Border>
 
-        <Grid Grid.Column="1" Margin="30,25,30,16">
+        <Grid Grid.Column="1" Margin="34,30,34,20">
           <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
           <DockPanel Grid.Row="0" LastChildFill="False">
             <Button x:Name="BackToPlaylistsButton" Content="←" ToolTip="Back to liked playlists" Style="{StaticResource IconButton}" DockPanel.Dock="Left" Margin="0,0,10,0" Visibility="Collapsed" Click="BackToPlaylists_Click" />
             <TextBlock x:Name="PageTitle" Text="Liked tracks" FontSize="28" FontWeight="SemiBold" />
             <TextBlock x:Name="TrackCount" Text="" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Bottom" Margin="12,0,0,4" />
-            <TextBox x:Name="SearchBox" Width="230" Height="34" DockPanel.Dock="Right" Margin="10,0,0,0" Padding="10,7" Background="#20232B" Foreground="{StaticResource TextBrush}" BorderBrush="#343844" BorderThickness="1" ToolTip="Search your liked tracks" TextChanged="SearchBox_TextChanged" />
-            <Button x:Name="PlayAllButton" Content="▶  Play all" Style="{StaticResource AccentButton}" DockPanel.Dock="Right" Width="100" Height="34" Padding="8,5" Margin="10,0,0,0" Click="PlayAll_Click" />
+            <TextBox x:Name="SearchBox" Width="250" Height="38" DockPanel.Dock="Right" Margin="12,0,0,0" Style="{StaticResource InputBox}" ToolTip="Search your liked tracks" TextChanged="SearchBox_TextChanged" />
+            <Button x:Name="PlayAllButton" Content="▶  Play all" Style="{StaticResource AccentButton}" DockPanel.Dock="Right" Width="106" Height="38" Padding="8,5" Margin="12,0,0,0" Click="PlayAll_Click" />
           </DockPanel>
           <TextBlock x:Name="PageStatus" Grid.Row="1" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,7,0,16" />
           <Grid x:Name="TracksContent" Grid.Row="2">
           <ListView x:Name="TrackList" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" SelectionChanged="TrackList_SelectionChanged" MouseDoubleClick="TrackList_MouseDoubleClick">
             <ListView.Resources>
               <Style TargetType="ListViewItem">
-                <Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="0,0,0,5" /><Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                <Setter Property="Background" Value="Transparent" />
-                <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#1D2028" /></Trigger><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#272B34" /></Trigger></Style.Triggers>
+                <Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="0,0,0,8" /><Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Background" Value="#12161E" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ListViewItem}">
+                      <Border x:Name="ItemChrome" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                      </Border>
+                      <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ItemChrome" Property="Background" Value="#1A202A" /></Trigger>
+                        <Trigger Property="IsSelected" Value="True"><Setter TargetName="ItemChrome" Property="Background" Value="#202832" /><Setter TargetName="ItemChrome" Property="BorderBrush" Value="{StaticResource OrangeBrush}" /></Trigger>
+                      </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
               </Style>
             </ListView.Resources>
             <ListView.ItemTemplate>
@@ -116,9 +133,21 @@
             <ListView x:Name="PlaylistList" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" MouseDoubleClick="PlaylistList_MouseDoubleClick">
               <ListView.Resources>
                 <Style TargetType="ListViewItem">
-                  <Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="0,0,0,5" /><Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                  <Setter Property="Background" Value="Transparent" />
-                  <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#1D2028" /></Trigger><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#272B34" /></Trigger></Style.Triggers>
+                  <Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="0,0,0,8" /><Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                  <Setter Property="Background" Value="#12161E" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="BorderThickness" Value="1" />
+                  <Setter Property="Template">
+                    <Setter.Value>
+                      <ControlTemplate TargetType="{x:Type ListViewItem}">
+                        <Border x:Name="ItemChrome" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10">
+                          <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ItemChrome" Property="Background" Value="#1A202A" /></Trigger>
+                          <Trigger Property="IsSelected" Value="True"><Setter TargetName="ItemChrome" Property="Background" Value="#202832" /><Setter TargetName="ItemChrome" Property="BorderBrush" Value="{StaticResource OrangeBrush}" /></Trigger>
+                        </ControlTemplate.Triggers>
+                      </ControlTemplate>
+                    </Setter.Value>
+                  </Setter>
                 </Style>
               </ListView.Resources>
               <ListView.ItemTemplate>
@@ -146,19 +175,19 @@
           </Grid>
         </Grid>
       </Grid>
-      <Border Grid.Row="2" Background="#171920" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0" Padding="20,11">
+      <Border Grid.Row="2" Background="#11141B" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0" Padding="24,14" Effect="{StaticResource CardShadow}">
         <Grid>
-          <Grid.ColumnDefinitions><ColumnDefinition Width="260" /><ColumnDefinition Width="*" /><ColumnDefinition Width="250" /></Grid.ColumnDefinitions>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="280" /><ColumnDefinition Width="*" /><ColumnDefinition Width="260" /></Grid.ColumnDefinitions>
           <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
             <Grid Width="54" Height="54">
-              <Border Background="#272A32" CornerRadius="4" /><TextBlock Text="♫" Foreground="{StaticResource OrangeBrush}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" /><Image x:Name="NowPlayingArtwork" Stretch="UniformToFill" />
+              <Border Background="#272A32" BorderBrush="#323846" BorderThickness="1" CornerRadius="8" /><TextBlock Text="♫" Foreground="{StaticResource OrangeBrush}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" /><Image x:Name="NowPlayingArtwork" Stretch="UniformToFill" />
             </Grid>
             <StackPanel Margin="12,0,0,0" VerticalAlignment="Center" Width="185">
               <TextBlock x:Name="NowPlayingTitle" Text="Nothing playing" FontSize="13" TextTrimming="CharacterEllipsis" />
               <TextBlock x:Name="NowPlayingArtist" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
             </StackPanel>
           </StackPanel>
-          <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Width="390">
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Width="420">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
               <Button x:Name="ShuffleButton" Content="⤨" ToolTip="Shuffle" Style="{StaticResource IconButton}" Click="Shuffle_Click" Foreground="{StaticResource MutedBrush}" />
               <Button Content="◀" ToolTip="Previous" Style="{StaticResource IconButton}" Click="Previous_Click" />
