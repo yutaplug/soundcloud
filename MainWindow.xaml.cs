@@ -23,7 +23,8 @@ public partial class MainWindow : Window
         Track
     }
 
-    private readonly SoundCloudApi _api = new();
+    private readonly AppLog _log = new();
+    private readonly SoundCloudApi _api;
     private readonly TokenStore _tokenStore = new();
     private readonly ObservableCollection<Track> _tracks = new();
     private readonly ICollectionView _trackView;
@@ -52,6 +53,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _api = new SoundCloudApi(_log);
         _trackView = CollectionViewSource.GetDefaultView(_tracks);
         _trackView.Filter = TrackMatchesSearch;
         _playlistView = CollectionViewSource.GetDefaultView(_playlists);
@@ -72,6 +74,7 @@ public partial class MainWindow : Window
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         Loaded -= MainWindow_Loaded;
+        _log.Info("Application started.");
         var savedToken = _tokenStore.TryLoad();
         if (!string.IsNullOrWhiteSpace(savedToken))
         {
@@ -98,6 +101,7 @@ public partial class MainWindow : Window
         try
         {
             var profile = await _api.GetCurrentUserAsync(token);
+            _log.Info($"Logged in as '{profile.UserName}'.");
             _tokenStore.TrySave(token);
             ProfileName.Text = profile.UserName;
             LoginView.Visibility = Visibility.Collapsed;
@@ -107,6 +111,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            _log.Error("Login failed.", ex);
             LoginStatus.Text = FriendlyError(ex);
         }
         finally
@@ -302,6 +307,7 @@ public partial class MainWindow : Window
 
     private async Task PlayTrackAsync(Track track, bool automatic = false)
     {
+        _log.Info($"Playback requested for track {track.Id} '{track.Title}'.");
         if (!automatic) _failedTrackIds.Clear();
         var queue = CurrentQueue;
         var index = queue.IndexOf(track);
@@ -327,9 +333,8 @@ public partial class MainWindow : Window
             _player.Stop();
             _player.Close();
             DeleteCurrentMediaFile();
-            var url = await _api.GetPlayableUrlAsync(track);
-            if (string.IsNullOrWhiteSpace(url)) throw new InvalidOperationException("This track is not available for streaming.");
-            var localFile = await _api.DownloadStreamToTempFileAsync(url);
+            var localFile = await _api.DownloadTrackToTempFileAsync(track);
+            if (string.IsNullOrWhiteSpace(localFile)) throw new InvalidOperationException("This track is not available for streaming.");
             _currentMediaFile = localFile;
             _playWhenOpened = true;
             _player.Open(new Uri(localFile, UriKind.Absolute));
@@ -339,6 +344,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            _log.Error($"Playback preparation failed for track {track.Id}.", ex);
             _failedTrackIds.Add(track.Id);
             PlayPauseButton.Content = "▶";
             if (IsSkippablePlaybackFailure(ex))
@@ -378,6 +384,7 @@ public partial class MainWindow : Window
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Space || e.IsRepeat) return;
+        if (SearchBox?.IsKeyboardFocusWithin == true) return;
         e.Handled = true;
         PlayPause_Click(sender, e);
     }
@@ -450,6 +457,36 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void ViewLogs_Click(object sender, RoutedEventArgs e)
+    {
+        LogsTextBox.Text = _log.ReadAll();
+        LogsStatus.Text = $"Saved locally in {_log.FilePath}";
+        LogsOverlay.Visibility = Visibility.Visible;
+        LogsTextBox.ScrollToEnd();
+    }
+
+    private void CloseLogs_Click(object sender, RoutedEventArgs e) => LogsOverlay.Visibility = Visibility.Collapsed;
+
+    private void ClearLogs_Click(object sender, RoutedEventArgs e)
+    {
+        _log.Clear();
+        LogsTextBox.Text = "No log entries yet.";
+        LogsStatus.Text = $"Saved locally in {_log.FilePath}";
+    }
+
+    private void CopyLogs_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Clipboard.SetText(LogsTextBox.Text);
+            LogsStatus.Text = "Logs copied to the clipboard.";
+        }
+        catch
+        {
+            LogsStatus.Text = "Could not copy the logs.";
+        }
+    }
+
     private void ProgressSlider_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (_player.NaturalDuration.HasTimeSpan && ProgressSlider.Maximum > 0)
@@ -461,6 +498,7 @@ public partial class MainWindow : Window
 
     private void Player_MediaOpened(object? sender, EventArgs e)
     {
+        _log.Info($"Media opened for track {_currentTrack?.Id.ToString() ?? "unknown"}; duration {_player.NaturalDuration}.");
         Dispatcher.Invoke(() =>
         {
             _player.Volume = VolumeSlider.Value;
@@ -507,6 +545,7 @@ public partial class MainWindow : Window
 
     private async void Player_MediaFailed(object? sender, ExceptionEventArgs e)
     {
+        _log.Error($"Media failed for track {_currentTrack?.Id.ToString() ?? "unknown"}.", e.ErrorException);
         await Dispatcher.InvokeAsync(async () =>
         {
             _playWhenOpened = false;
@@ -558,7 +597,9 @@ public partial class MainWindow : Window
 
     private static bool IsSkippablePlaybackFailure(Exception ex) =>
         ex is HttpRequestException ||
-        ex is InvalidOperationException && ex.Message.Contains("not available", StringComparison.OrdinalIgnoreCase);
+        ex is InvalidOperationException && ex.Message.Contains("not available", StringComparison.OrdinalIgnoreCase) ||
+        ex is InvalidDataException && (ex.Message.Contains("encrypted", StringComparison.OrdinalIgnoreCase) ||
+                                       ex.Message.Contains("DRM", StringComparison.OrdinalIgnoreCase));
 
     private static string FormatTime(TimeSpan time) => time.TotalHours >= 1 ? time.ToString(@"h\:mm\:ss") : time.ToString(@"m\:ss");
 
@@ -702,6 +743,7 @@ public partial class MainWindow : Window
 
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
+        _log.Info("Application closing.");
         _positionTimer.Stop();
         _player.Close();
         DeleteCurrentMediaFile();

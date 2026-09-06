@@ -12,6 +12,7 @@ public sealed class Track
         ? ""
         : ArtworkUrl.Replace("-t67x67.", "-t500x500.", StringComparison.OrdinalIgnoreCase);
     public string StreamUrl { get; set; } = "";
+    public string FallbackStreamUrl { get; init; } = "";
     public string PermalinkUrl { get; init; } = "";
     public TimeSpan Duration { get; init; }
     public bool IsPlayable => !string.IsNullOrWhiteSpace(StreamUrl);
@@ -35,7 +36,12 @@ public sealed class Track
         var user = source.TryGetProperty("user", out var userJson) ? userJson : default;
         var artwork = GetString(source, "artwork_url");
         if (string.IsNullOrWhiteSpace(artwork)) artwork = GetString(user, "avatar_url");
-        var streamUrl = GetString(source, "stream_url") ?? GetProgressiveStreamUrl(source);
+        var streamUrls = GetPreferredStreamUrls(source);
+        var legacyStreamUrl = GetString(source, "stream_url");
+        var streamUrl = streamUrls.FirstOrDefault() ?? legacyStreamUrl;
+        var fallbackStreamUrl = streamUrls.FirstOrDefault(url => !string.Equals(url, streamUrl, StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(fallbackStreamUrl) && !string.Equals(legacyStreamUrl, streamUrl, StringComparison.OrdinalIgnoreCase))
+            fallbackStreamUrl = legacyStreamUrl;
 
         return new Track
         {
@@ -44,6 +50,7 @@ public sealed class Track
             Artist = GetString(user, "username") ?? "Unknown artist",
             ArtworkUrl = NormalizeImageUrl(artwork ?? ""),
             StreamUrl = streamUrl ?? "",
+            FallbackStreamUrl = fallbackStreamUrl ?? "",
             PermalinkUrl = GetString(source, "permalink_url") ?? "",
             Duration = TimeSpan.FromMilliseconds(Math.Max(0, GetLong(source, "duration")))
         };
@@ -63,22 +70,47 @@ public sealed class Track
     private static string NormalizeImageUrl(string url) =>
         string.IsNullOrWhiteSpace(url) ? "" : url.Replace("-large.", "-t67x67.", StringComparison.OrdinalIgnoreCase);
 
-    private static string? GetProgressiveStreamUrl(JsonElement source)
+    private static List<string> GetPreferredStreamUrls(JsonElement source)
     {
-        if (!source.TryGetProperty("media", out var media) || !media.TryGetProperty("transcodings", out var transcodings) || transcodings.ValueKind != JsonValueKind.Array) return null;
-        foreach (var transcoding in transcodings.EnumerateArray())
+        var candidates = new List<(string Url, int Score)>();
+        AddCandidate(candidates, GetString(source, "download_url"), 550);
+        AddCandidate(candidates, GetString(source, "hls_aac_160_url"), 500);
+        AddCandidate(candidates, GetString(source, "hls_aac_96_url"), 490);
+        AddCandidate(candidates, GetString(source, "http_mp3_128_url"), 400);
+
+        if (source.TryGetProperty("media", out var media) && media.ValueKind == JsonValueKind.Object &&
+            media.TryGetProperty("transcodings", out var transcodings) && transcodings.ValueKind == JsonValueKind.Array)
         {
-            var format = transcoding.TryGetProperty("format", out var formatJson) ? formatJson : default;
-            var protocol = GetString(format, "protocol") ?? GetString(transcoding, "protocol");
-            var mime = GetString(format, "mime_type") ?? GetString(transcoding, "mime_type");
-            if (string.Equals(protocol, "progressive", StringComparison.OrdinalIgnoreCase) && string.Equals(mime, "audio/mpeg", StringComparison.OrdinalIgnoreCase))
-                return GetString(transcoding, "url");
+            foreach (var transcoding in transcodings.EnumerateArray())
+            {
+                var format = transcoding.TryGetProperty("format", out var formatJson) ? formatJson : default;
+                var protocol = GetString(format, "protocol") ?? GetString(transcoding, "protocol") ?? "";
+                var mime = GetString(format, "mime_type") ?? GetString(transcoding, "mime_type") ?? "";
+                var preset = GetString(transcoding, "preset") ?? "";
+                var url = GetString(transcoding, "url");
+                var isHdAudio = mime.Contains("aac", StringComparison.OrdinalIgnoreCase) ||
+                                mime.Contains("mp4", StringComparison.OrdinalIgnoreCase) ||
+                                preset.Contains("aac", StringComparison.OrdinalIgnoreCase) ||
+                                preset.Contains("m4a", StringComparison.OrdinalIgnoreCase) ||
+                                preset.Contains("mp4", StringComparison.OrdinalIgnoreCase);
+                var score = protocol.Equals("hls", StringComparison.OrdinalIgnoreCase) && isHdAudio
+                    ? preset.Contains("160", StringComparison.OrdinalIgnoreCase) ? 500 : 490
+                    : protocol.Equals("progressive", StringComparison.OrdinalIgnoreCase) && mime.Contains("mpeg", StringComparison.OrdinalIgnoreCase) ? 400
+                    : protocol.Equals("progressive", StringComparison.OrdinalIgnoreCase) ? 390
+                    : 100;
+                AddCandidate(candidates, url, score);
+            }
         }
-        foreach (var transcoding in transcodings.EnumerateArray())
-        {
-            var format = transcoding.TryGetProperty("format", out var formatJson) ? formatJson : default;
-            if (string.Equals(GetString(format, "protocol") ?? GetString(transcoding, "protocol"), "progressive", StringComparison.OrdinalIgnoreCase)) return GetString(transcoding, "url");
-        }
-        return null;
+
+        return candidates
+            .OrderByDescending(candidate => candidate.Score)
+            .Select(candidate => candidate.Url)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static void AddCandidate(List<(string Url, int Score)> candidates, string? url, int score)
+    {
+        if (!string.IsNullOrWhiteSpace(url)) candidates.Add((url, score));
     }
 }

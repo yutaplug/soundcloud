@@ -58,6 +58,7 @@
               <TextBlock Text="♫" Foreground="{StaticResource OrangeBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
             <TextBlock x:Name="ProfileName" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" Margin="0,0,14,0" FontSize="12" />
+            <Button Content="View logs" Click="ViewLogs_Click" Foreground="{StaticResource MutedBrush}" Padding="10,6" Margin="0,0,5,0" />
             <Button Content="Log out" Click="Logout_Click" Foreground="{StaticResource MutedBrush}" Padding="10,6" />
           </StackPanel>
         </Grid>
@@ -215,6 +216,29 @@
         <TextBlock x:Name="BusyText" Text="Loading…" FontSize="16" HorizontalAlignment="Center" />
         <ProgressBar IsIndeterminate="True" Width="220" Height="4" Margin="0,13,0,0" Foreground="{StaticResource OrangeBrush}" />
       </StackPanel>
+    </Border>
+
+    <Border x:Name="LogsOverlay" Panel.ZIndex="20" Visibility="Collapsed" Background="#DD0A0C10">
+      <Border Width="860" Height="590" MaxWidth="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=ActualWidth}" MaxHeight="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=ActualHeight}" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="16" Padding="22" Effect="{StaticResource CardShadow}">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+          <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,14">
+            <StackPanel DockPanel.Dock="Left">
+              <TextBlock Text="Playback logs" FontSize="20" FontWeight="SemiBold" />
+              <TextBlock Text="URLs and tokens are automatically redacted." Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,4,0,0" />
+            </StackPanel>
+            <Button Content="Close" Click="CloseLogs_Click" DockPanel.Dock="Right" Padding="12,7" />
+          </DockPanel>
+          <TextBox x:Name="LogsTextBox" Grid.Row="1" Background="#0A0C10" Foreground="{StaticResource TextBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" Padding="12" FontFamily="Consolas" FontSize="11" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" />
+          <DockPanel Grid.Row="2" LastChildFill="False" Margin="0,14,0,0">
+            <TextBlock x:Name="LogsStatus" Text="Saved locally in %LOCALAPPDATA%\SoundCloudDesktop\playback.log" Foreground="{StaticResource MutedBrush}" FontSize="10" VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+              <Button Content="Clear" Click="ClearLogs_Click" Padding="12,7" Margin="8,0,0,0" />
+              <Button Content="Copy" Click="CopyLogs_Click" Style="{StaticResource AccentButton}" Padding="12,7" Margin="8,0,0,0" />
+            </StackPanel>
+          </DockPanel>
+        </Grid>
+      </Border>
     </Border>
   </Grid>
 </Window>
