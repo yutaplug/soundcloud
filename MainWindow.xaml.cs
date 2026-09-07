@@ -324,6 +324,7 @@ public partial class MainWindow : Window
         ElapsedText.Text = "0:00";
         TotalText.Text = track.DurationText;
         ProgressSlider.Value = 0;
+        ProgressSlider.Maximum = Math.Max(1, track.Duration.TotalSeconds);
         PlayPauseButton.Content = "Ⅱ";
         PageStatus.Text = $"Preparing “{track.Title}”…";
 
@@ -487,11 +488,20 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ProgressSlider_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _isSeeking = true;
+    }
+
     private void ProgressSlider_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (_player.NaturalDuration.HasTimeSpan && ProgressSlider.Maximum > 0)
+        try
         {
-            _player.Position = TimeSpan.FromSeconds(ProgressSlider.Value);
+            if (_currentTrack is not null && ProgressSlider.Maximum > 0)
+                _player.Position = TimeSpan.FromSeconds(Math.Clamp(ProgressSlider.Value, ProgressSlider.Minimum, ProgressSlider.Maximum));
+        }
+        finally
+        {
             _isSeeking = false;
         }
     }
@@ -514,6 +524,7 @@ public partial class MainWindow : Window
                 ProgressSlider.Maximum = Math.Max(1, total.TotalSeconds);
                 TotalText.Text = FormatTime(total);
             }
+            _positionTimer.Start();
         });
     }
 
@@ -529,6 +540,7 @@ public partial class MainWindow : Window
         if (_repeatMode == RepeatMode.Off && !HasAutomaticNextTrack())
         {
             _playWhenOpened = false;
+            _positionTimer.Stop();
             _player.Stop();
             _player.Close();
             DeleteCurrentMediaFile();
@@ -549,6 +561,7 @@ public partial class MainWindow : Window
         await Dispatcher.InvokeAsync(async () =>
         {
             _playWhenOpened = false;
+            _positionTimer.Stop();
             PlayPauseButton.Content = "▶";
             var detail = e.ErrorException?.Message;
             if (_currentTrack is not null)
@@ -568,8 +581,11 @@ public partial class MainWindow : Window
 
     private void PositionTimer_Tick(object? sender, EventArgs e)
     {
-        if (_isSeeking || !_player.NaturalDuration.HasTimeSpan) return;
+        if (_isSeeking || _currentTrack is null) return;
         var position = _player.Position;
+        var duration = _player.NaturalDuration.HasTimeSpan ? _player.NaturalDuration.TimeSpan : _currentTrack.Duration;
+        if (duration <= TimeSpan.Zero) return;
+        if (ProgressSlider.Maximum < duration.TotalSeconds) ProgressSlider.Maximum = duration.TotalSeconds;
         ElapsedText.Text = FormatTime(position);
         if (ProgressSlider.Maximum > 0) ProgressSlider.Value = Math.Min(ProgressSlider.Maximum, position.TotalSeconds);
     }

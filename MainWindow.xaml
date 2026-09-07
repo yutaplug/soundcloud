@@ -199,7 +199,7 @@
             <Grid Margin="0,5,0,0">
               <Grid.ColumnDefinitions><ColumnDefinition Width="42" /><ColumnDefinition Width="*" /><ColumnDefinition Width="42" /></Grid.ColumnDefinitions>
               <TextBlock x:Name="ElapsedText" Text="0:00" Foreground="{StaticResource MutedBrush}" FontSize="10" VerticalAlignment="Center" />
-              <Slider x:Name="ProgressSlider" Grid.Column="1" Minimum="0" Maximum="1" Value="0" VerticalAlignment="Center" IsMoveToPointEnabled="True" PreviewMouseLeftButtonUp="ProgressSlider_MouseLeftButtonUp" />
+              <Slider x:Name="ProgressSlider" Grid.Column="1" Minimum="0" Maximum="1" Value="0" VerticalAlignment="Center" IsMoveToPointEnabled="True" PreviewMouseLeftButtonDown="ProgressSlider_MouseLeftButtonDown" PreviewMouseLeftButtonUp="ProgressSlider_MouseLeftButtonUp" />
               <TextBlock x:Name="TotalText" Grid.Column="2" Text="0:00" Foreground="{StaticResource MutedBrush}" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Center" />
             </Grid>
           </StackPanel>
